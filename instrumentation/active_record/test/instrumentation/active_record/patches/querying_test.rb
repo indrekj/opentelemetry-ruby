@@ -7,20 +7,60 @@
 require 'test_helper'
 
 require_relative '../../../../lib/opentelemetry/instrumentation/active_record'
-require_relative '../../../../lib/opentelemetry/instrumentation/active_record/patches/querying'
 
-describe OpenTelemetry::Instrumentation::ActiveRecord::Patches::Querying do
+describe OpenTelemetry::Instrumentation::ActiveRecord do
   let(:exporter) { EXPORTER }
   let(:spans) { exporter.finished_spans }
+  let(:span_names) { spans.map(&:name) }
 
   before { exporter.reset }
 
-  describe 'find_by_sql' do
-    it 'traces' do
-      User.first
+  it 'adds "order" and "limit" to span name when using "first"' do
+    User.first
 
-      find_span = spans.find { |s| s.name == 'User.find_by_sql' }
-      _(find_span).wont_be_nil
+    # TODO: duplicate spans
+    _(span_names).must_equal([
+                               'User.order(...).limit(...)',
+                               'User.first'
+                             ])
+  end
+
+  it 'adds "where" to span name' do
+    User
+      .where(name: 'john')
+      .where(counter: 3)
+      .to_a
+
+    _(span_names).must_equal(['User.where(...).where(...)'])
+  end
+
+  it 'allows reusing relations' do
+    relation = User.where(name: 'john')
+
+    # First call
+    relation.order(:id).to_a
+
+    # Second call
+    relation.where(counter: 3).to_a
+
+    _(span_names).must_equal([
+                               'User.where(...).order(...)',
+                               'User.where(...).where(...)'
+                             ])
+  end
+
+  it 'adds "eager_load" to span name' do
+    users = 3.times.map { User.create! }
+    users.each do |user|
+      user.articles.create!(title: 'test article1')
+      user.articles.create!(title: 'test article2')
     end
+    exporter.reset
+
+    User
+      .eager_load(:articles)
+      .map { |u| [u.id, u.articles.length] }
+
+    _(span_names).must_equal(['User.eager_load(:articles)'])
   end
 end

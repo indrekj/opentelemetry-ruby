@@ -18,32 +18,32 @@ describe OpenTelemetry::Instrumentation::ActiveRecord::Patches::RelationPersiste
   describe '.update_all' do
     it 'traces' do
       User.update_all(name: 'new name')
-      update_all_span = spans.find { |s| s.name == 'User.update_all' }
-      _(update_all_span).wont_be_nil
+
       _(spans.count).must_equal(1)
+      _(spans[0].name).must_equal('User.update_all(...)')
     end
 
     it 'traces scoped calls' do
       User.recently_created.update_all(name: 'new name')
-      update_all_span = spans.find { |s| s.name == 'User.update_all' }
-      _(update_all_span).wont_be_nil
+
       _(spans.count).must_equal(1)
+      _(spans[0].name).must_equal('User.where(...).update_all(...)')
     end
   end
 
   describe '.delete_all' do
     it 'traces' do
       User.delete_all
-      delete_all_span = spans.find { |s| s.name == 'User.delete_all' }
-      _(delete_all_span).wont_be_nil
+
       _(spans.count).must_equal(1)
+      _(spans[0].name).must_equal('User.delete_all')
     end
 
     it 'traces scoped calls' do
       User.recently_created.delete_all
-      delete_all_span = spans.find { |s| s.name == 'User.delete_all' }
-      _(delete_all_span).wont_be_nil
+
       _(spans.count).must_equal(1)
+      _(spans[0].name).must_equal('User.where(...).delete_all')
     end
   end
 end

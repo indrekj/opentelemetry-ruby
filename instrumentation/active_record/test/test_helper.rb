@@ -27,6 +27,8 @@ ActiveRecord::Base.establish_connection(
 
 # Create User model
 class User < ActiveRecord::Base
+  has_many :articles
+
   validate :name_if_present
 
   scope :recently_created, -> { where('created_at > ?', Time.now - 3600) }
@@ -37,6 +39,11 @@ class User < ActiveRecord::Base
 end
 
 class SuperUser < ActiveRecord::Base; end
+
+# Create Article model
+class Article < ActiveRecord::Base
+  belongs_to :user
+end
 
 # Get the current version so we can create a test table
 segments = Gem.loaded_specs['activerecord'].version.segments
@@ -59,10 +66,29 @@ class CreateUserTable < ActiveRecord::Migration[migration_version]
   end
 end
 
+class CreateArticlesTable < ActiveRecord::Migration[migration_version]
+  def change
+    create_table :articles do |t|
+      t.string :title
+      t.belongs_to :user
+      t.timestamps
+    end
+  end
+end
+
 begin
   CreateUserTable.migrate(:up)
 rescue ActiveRecord::StatementInvalid => e
-  raise e unless e.message == "Mysql2::Error: Table 'users' already exists"
+  raise e unless e.message =~ /table "users" already exists/
 end
 
-Minitest.after_run { CreateUserTable.migrate(:down) }
+begin
+  CreateArticlesTable.migrate(:up)
+rescue ActiveRecord::StatementInvalid => e
+  raise e unless e.message =~ /table "articles" already exists/
+end
+
+Minitest.after_run do
+  CreateUserTable.migrate(:down)
+  CreateArticlesTable.migrate(:down)
+end

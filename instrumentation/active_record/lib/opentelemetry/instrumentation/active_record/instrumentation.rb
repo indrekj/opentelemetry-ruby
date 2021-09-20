@@ -44,7 +44,6 @@ module OpenTelemetry
           # Modules to prepend to ActiveRecord::Base are still grouped by the source
           # module that they are defined in.
           # Example: Patches::PersistenceClassMethods refers to https://github.com/rails/rails/blob/v6.1.0/activerecord/lib/active_record/persistence.rb#L10
-          ::ActiveRecord::Base.prepend(Patches::Querying)
           ::ActiveRecord::Base.prepend(Patches::Persistence)
           ::ActiveRecord::Base.prepend(Patches::PersistenceClassMethods)
           ::ActiveRecord::Base.prepend(Patches::PersistenceInsertClassMethods) if insert_class_methods_supported?
@@ -55,7 +54,6 @@ module OpenTelemetry
         end
 
         def require_dependencies
-          require_relative 'patches/querying'
           require_relative 'patches/persistence'
           require_relative 'patches/persistence_class_methods'
           require_relative 'patches/persistence_insert_class_methods' if insert_class_methods_supported?
